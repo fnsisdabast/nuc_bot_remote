@@ -1,0 +1,200 @@
+#!/usr/bin/env python
+
+import rospy
+import roslib
+
+from std_msgs.msg import Int16, Float32MultiArray
+from geometry_msgs.msg import Twist
+
+
+######################################################
+######################################################
+class IR_flame():
+######################################################
+######################################################
+
+
+    #####################################################
+    def __init__(self):
+    #####################################################
+        rospy.init_node('find_flame')
+        self.nodename=rospy.get_name()
+        rospy.loginfo("%s started" % self.nodename)
+
+        ### initialize variables
+	self.dist=0
+        self.t=Twist()
+        self.right_flame_val=0
+        self.center_flame_val=0
+        self.left_flame_val=0
+        self.robot_angle_val=0
+        self.oct_array=[0,0,0,0,0,0,0,0]
+
+        ### subscribers/publishers
+        rospy.Subscriber('right_flame_val', Int16, self.r_callback)
+        rospy.Subscriber('center_flame_val', Int16, self.c_callback)
+        rospy.Subscriber('left_flame_val', Int16, self.l_callback)
+        rospy.Subscriber('robot_angle_val', Int16, self.a_callback)
+        rospy.Subscriber('octant_dist', Float32MultiArray, self.laser_oct_callback)
+        self.twist_pub=rospy.Publisher('cmd_vel', Twist, queue_size=1)
+
+    #####################################################
+    def spin(self):
+    #####################################################
+        while not rospy.is_shutdown():
+            self.spinOnce()
+
+    #####################################################
+    def spinOnce(self):
+    #####################################################
+   #     if self.flame_present() and not self.close_enough():
+   #         print ('found flame')
+#	    if (self.center_flame_val>100):
+#		self.go_straight()
+#	    elif (self.right_flame_val = true) :
+ #               self.go_right()
+  #          elif (self.left_flame_val = true):
+   #             self.go_left()
+    #        else:
+     #           self.go_straight()
+    #    else:
+     #       if not self.hungup():
+      #          print ('searching')
+       #         self.move ()
+        #    else:
+         #       print ('oh no!!')
+          #      self.escape ()
+
+	self.front_avg=(self.oct_array[3]+self.oct_array[4]+self.oct_array[5])/2
+        print (self.front_avg)
+	if self.front_avg>.55:							#if way ahead is clear, go straight
+		self.go_straight()
+	else:									#if not
+		self.right_avg=(self.oct_array[0]+self.oct_array[1])/2		#see if can go right or left
+		self.left_avg=(self.oct_array[6]+self.oct_array[7])/2
+		if self.right_avg>.6:						#if can go, go right preferentially 
+			self.rotate_right()
+		else:
+			self.rotate_left()
+	
+	
+        
+    #####################################################                     
+    ### Callbacks
+    #####################################################
+    def r_callback(self, msg):
+        print('r cb')
+        self.right_flame_val=msg.data
+
+    def c_callback(self, msg):
+        self.center_flame_val=msg.data
+
+    def l_callback(self, msg):
+        self.left_flame_val=msg.data
+
+    def a_callback(self, msg):
+        self.robot_angle_val=msg.data
+
+    def laser_oct_callback(self, msg):
+        self.oct_array=msg.data
+    #####################################################
+
+    #####################################################
+    ### Robot Movement Actions
+    #####################################################
+    def escape(self):
+        self.t.angular.z=2
+        self.t.linear.x=0
+        self.twist_pub.publish(self.t)
+
+    def go_right(self):
+        self.t.angular.z=2
+        self.t.linear.x=.4
+        self.twist_pub.publish(self.t)
+
+    def rotate_right(self):
+        self.t.angular.z=2
+        self.t.linear.x=0
+        self.twist_pub.publish(self.t)
+    
+    def go_left(self):
+        self.t.angular.z=-2
+        self.t.linear.x=.4
+        self.twist_pub.publish(self.t)
+
+    def rotate_left(self):
+        self.t.angular.z=-2
+        self.t.linear.x=0
+        self.twist_pub.publish(self.t)
+
+    def go_straight(self):
+        self.t.angular.z=0
+        self.t.linear.x=.2
+        self.twist_pub.publish(self.t)
+
+    def go_angle(self, self.angle_to_turn):
+        self.start_angle=self.robot_angle_val
+        if (self.angle_to_turn>=-359) and (self.angle_to_turn<=359) and (angle_to_turn !=0):
+            if self.angle_to_turn>0:
+                if (self.angle_to_turn+self.start_angle)>359:
+                    self.end_angle_val=self.angle_to_turn+self.start_angle-360
+                else:
+                    self.end_angle_val=self.angle_to_turn+self.start_angle
+            else:
+                if (self.angle_to_turn+self.start_angle)<0:
+                    self.end_angle_val=self.start_angle+self.angle_to_turn+360
+                else:
+                    self.end_angle_val=self.start_angle+self.angle_to_turn
+        else:
+            self.angle_to_turn=0
+            
+        
+        
+    #####################################################
+
+
+    #####################################################
+    ### Robot Movement Logic
+    #####################################################
+
+    def flame_present(self):
+        if (self.right_flame_val==True) or (self.left_flame_val==True) or (self.center_flame_val>200):
+            return True
+        return False
+                      
+    def close_enough(self):
+        for self.dist in self.oct_array:
+            if self.dist <.1:
+                print ('close enough')
+                return True
+        return False
+
+    def hungup(self):
+	print(self.oct_array)
+        for self.dist in self.oct_array:
+	    print(self.dist)
+            if self.dist <.25:
+		print ('hung up')
+		print (self.dist)
+                return True                
+        return False
+
+    def move(self):
+        print self.oct_array
+        if self.oct_array[4] >.5:
+            self.go_straight();
+        elif self.oct_array[0] >.5:
+            self.go_right();
+        else:
+            self.go_left();
+    #####################################################  
+
+
+
+if __name__ == '__main__':
+    """ main """
+    iR_flame = IR_flame()
+    iR_flame.spin()
+            
+    
+    

@@ -1,0 +1,54 @@
+#!/usr/bin/env python
+
+import rospy
+from std_msgs.msg import String, Int16, Bool
+from sensor_msgs.msg import Range
+
+from time import sleep
+import serial
+import threading
+
+
+
+ser = serial.Serial('/dev/ttyACM0', 9600, bytesize=8, parity='N', stopbits=1, timeout=1,
+                    xonxoff=False, rtscts=False, dsrdtr=False) # Establish the connection on a specific port
+
+ser.reset_input_buffer()
+ser.reset_output_buffer()
+
+rospy.init_node('arduino_publisher')
+
+ser_pub=rospy.Publisher('arduino_serial', String, queue_size=1)
+right_ir_pub=rospy.Publisher('right_ir_dist', Int16, queue_size=1)
+center_ir_pub=rospy.Publisher('center_ir_dist', Int16, queue_size=1)
+left_ir_pub=rospy.Publisher('left_ir_dist', Int16, queue_size=1)
+right_flame_pub=rospy.Publisher('right_flame_val', Int16, queue_size=1)
+center_flame_pub=rospy.Publisher('center_flame_val', Int16, queue_size=1)
+left_flame_pub=rospy.Publisher('left_flame_val', Int16, queue_size=1)
+uv_right_pub=rospy.Publisher('uv_right', Bool, queue_size=1)
+uv_left_pub=rospy.Publisher('uv_left', Bool, queue_size=1)
+
+
+#rate=rospy.Rate(10)
+
+while not rospy.is_shutdown():
+    raw_data_from_arduino=ser.readline()
+    ser_pub.publish(raw_data_from_arduino)
+    sep_data=raw_data_from_arduino.split(',')
+    sep_data=[int(i) for i in sep_data]
+    if len (sep_data) == 8:
+        right_ir_pub.publish(sep_data[0])
+        center_ir_pub.publish(sep_data[1])
+        left_ir_pub.publish(sep_data[2])
+        right_flame_pub.publish(sep_data[3])
+        center_flame_pub.publish(sep_data[4])
+        left_flame_pub.publish(sep_data[5])
+        uv_right_pub.publish(sep_data[6])
+        uv_left_pub.publish(sep_data[7])
+
+    
+  
+
+    
+    
+        
